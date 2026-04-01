@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-lang="en" data-pov="teacher">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classroom Seating Chart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+  <!-- heic2any untuk konversi HEIF/HEIC dari iPhone -->
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- =====================================================
+       TOOLBAR
+  ===================================================== -->
+  <!-- =====================================================
+       LOGIN SCREEN
+  ===================================================== -->
+  <div id="login-screen" style="display:none;">
+    <div class="login-card">
+      <div class="login-logo">
+        <svg viewBox="0 0 24 24"><path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/></svg>
+      </div>
+      <h1 class="login-title">Kelas<span>Ku</span></h1>
+      <p class="login-subtitle">Aplikasi denah tempat duduk & acak nama.</p>
+
+      <!-- Tabs Login / Register -->
+      <div class="login-tabs">
+        <button class="login-tab active" id="tab-login" onclick="switchLoginTab('login')">Masuk</button>
+        <button class="login-tab" id="tab-register" onclick="switchLoginTab('register')">Daftar</button>
+      </div>
+
+      <!-- Error message -->
+      <div class="login-error" id="login-error"></div>
+
+      <!-- Form Login -->
+      <div id="form-login">
+        <input type="email" class="login-input" id="login-email" placeholder="Email" />
+        <input type="password" class="login-input" id="login-password" placeholder="Password" />
+        <button class="forgot-password" id="btn-forgot">Lupa password?</button>
+        <button class="btn-login-submit" id="btn-email-login">Masuk</button>
+      </div>
+
+      <!-- Form Register -->
+      <div id="form-register" style="display:none;">
+        <input type="text" class="login-input" id="reg-name" placeholder="Nama lengkap" />
+        <input type="email" class="login-input" id="reg-email" placeholder="Email" />
+        <input type="password" class="login-input" id="reg-password" placeholder="Password (min. 6 karakter)" />
+        <input type="password" class="login-input" id="reg-confirm" placeholder="Konfirmasi password" />
+        <button class="btn-login-submit" id="btn-email-register">Daftar</button>
+      </div>
+
+      <div class="login-divider">atau</div>
+
+      <button class="btn-google" id="btn-google-login">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Lanjut dengan Google
+      </button>
+      <p class="login-footer">Data tersimpan di cloud per akun kamu.</p>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       CLASS SELECTOR MODAL
+  ===================================================== -->
+  <div class="modal-overlay" id="modal-classes">
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-header">
+        <span class="modal-title" style="font-family:var(--font-display)">Pilih Kelas</span>
+        <button class="btn btn-ghost btn-icon" id="btn-close-classes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="class-list" id="class-list-ul"></div>
+        <div class="divider"></div>
+        <div class="form-group">
+          <label class="form-label">Buat Kelas Baru</label>
+          <input type="text" class="form-input" id="input-new-class" placeholder="Contoh: Kelas 9A, XII IPA 1..." />
+        </div>
+        <button class="btn btn-primary w-full" id="btn-create-class">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="width:15px;height:15px;">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Buat Kelas
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <header id="toolbar" style="display:none;">
+    <div class="toolbar-brand">
+      <h1>Kelas<span>Ku</span></h1>
+      <span class="sync-indicator" id="sync-indicator">
+        <span class="sync-dot" id="sync-dot"></span>
+        <span class="sync-label" id="sync-label"></span>
+      </span>
+      <span id="active-class-label" style="display:none;visibility:hidden;width:0;overflow:hidden;"></span>
+    </div>
+    <!-- User avatar dipindah ke brand area agar tidak kepotong di mobile -->
+      <div class="user-menu-wrap" id="user-menu-wrap" style="display:none;">
+        <button class="user-avatar-btn" id="btn-user-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px;">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </button>
+        <div class="user-dropdown" id="user-dropdown">
+          <div class="user-info">
+            <p class="user-info-name" id="user-display-name">–</p>
+            <p class="user-info-email" id="user-display-email">–</p>
+          </div>
+          <button class="user-dropdown-btn" id="btn-switch-class">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            Ganti Kelas
+          </button>
+          <button class="user-dropdown-btn danger" id="btn-logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Keluar
+          </button>
+        </div>
+      </div>
+
+    <nav class="toolbar-center">
+      <!-- Tab nav — hanya desktop -->
+      <div class="toggle-pill desktop-only" id="view-tabs">
+        <button data-view="seating" class="active" data-i18n="tab_seating">Seating</button>
+        <button data-view="picker" data-i18n="tab_picker">Name Picker</button>
+      </div>
+    </nav>
+
+    <div class="toolbar-right">
+      <div class="toggle-pill desktop-only" id="pov-toggle">
+        <button data-pov="teacher" class="active" data-i18n="pov_teacher">Teacher POV</button>
+        <button data-pov="student" data-i18n="pov_student">Student POV</button>
+      </div>
+
+      <button class="btn btn-primary desktop-only" id="btn-shuffle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 3 21 3 21 8"/>
+          <line x1="4" y1="20" x2="21" y2="3"/>
+          <polyline points="21 16 21 21 16 21"/>
+          <line x1="15" y1="15" x2="21" y2="21"/>
+        </svg>
+        <span class="btn-label" data-i18n="btn_shuffle">Shuffle</span>
+      </button>
+
+      <button class="btn btn-secondary desktop-only" id="btn-open-students">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="btn-label" data-i18n="btn_students">Students</span>
+      </button>
+
+      <button class="btn btn-secondary desktop-only" id="btn-open-attendance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          <path d="M9 16l2 2 4-4"/>
+        </svg>
+        <span class="btn-label" data-i18n="btn_attendance">Absensi</span>
+      </button>
+
+      <div class="lang-picker" id="lang-picker">
+        <button class="lang-globe-btn" id="btn-lang-globe" aria-label="Change language">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </button>
+        <div class="lang-dropdown" id="lang-dropdown">
+          <button class="lang-option active" data-lang="en">
+            <span class="lang-flag">🇬🇧</span>
+            <span class="lang-name">English</span>
+            <span class="lang-check">✓</span>
+          </button>
+          <button class="lang-option" data-lang="id">
+            <span class="lang-flag">🇮🇩</span>
+            <span class="lang-name">Indonesia</span>
+            <span class="lang-check" style="visibility:hidden">✓</span>
+          </button>
+          <button class="lang-option" data-lang="ja">
+            <span class="lang-flag">🇯🇵</span>
+            <span class="lang-name">日本語</span>
+            <span class="lang-check" style="visibility:hidden">✓</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost btn-icon" id="btn-darkmode" aria-label="Toggle dark mode">
+        <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg id="icon-sun" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </button>
+
+      <button class="btn btn-ghost btn-icon" id="btn-open-settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- =====================================================
+       MAIN CONTENT
+  ===================================================== -->
+  <main id="main-content" style="display:none;">
+
+    <!-- SEATING VIEW -->
+    <section id="view-seating" class="view active">
+      <div class="seating-header">
+        <div class="seating-header-left">
+          <span class="seating-title" data-i18n="seating_title">Seating Chart</span>
+          <span class="student-count-badge" id="seat-count-badge">0 / 0</span>
+          <span class="formasi-badge" id="formasi-badge" title="Formasi per baris">–</span>
+          <div class="pov-indicator">
+            <span id="pov-label" data-i18n="pov_teacher_label">Teacher's View</span>
+          </div>
+          <span class="seating-class-name" id="seating-class-name" style="display:none;"></span>
+        </div>
+        <div class="grid-config">
+          <button class="btn btn-secondary" id="btn-edit-formasi">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span class="btn-label" id="btn-formasi-label" data-i18n="btn_edit_formasi">Edit Formasi</span>
+          </button>
+          <label for="input-rows" data-i18n="label_rows">Rows:</label>
+          <input type="number" id="input-rows" min="1" max="10" value="4" />
+          <label for="input-cols" data-i18n="label_cols">Cols:</label>
+          <input type="number" id="input-cols" min="1" max="12" value="5" />
+          <button class="btn btn-secondary" id="btn-apply-grid">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span class="btn-label" data-i18n="btn_apply">Apply</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-show-stats">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            <span class="btn-label" data-i18n="btn_stats">Stats</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats Panel -->
+      <div class="stats-panel" id="stats-panel"></div>
+
+      <div class="seating-grid-wrapper" id="seating-grid-section">
+        <div class="teacher-bar" data-i18n="teacher_desk">🖥️ Teacher's Desk</div>
+        <div id="seating-grid"></div>
+      </div>
+    </section>
+
+    <!-- PICKER VIEW -->
+    <section id="view-picker" class="view">
+      <div class="picker-card">
+        <p class="picker-title" data-i18n="picker_title">🎲 Random Name Picker</p>
+        <p class="picker-subtitle" data-i18n="picker_subtitle">Picks a random student from those present</p>
+
+        <div class="picker-display" id="picker-display">
+          <div class="picker-avatar-display" id="picker-avatar" style="display:none;"></div>
+          <p class="picker-name-placeholder" id="picker-placeholder" data-i18n="picker_placeholder">Press Pick to start!</p>
+          <p class="picker-name hidden" id="picker-name-display"></p>
+        </div>
+
+        <div class="picker-controls">
+          <label class="picker-option">
+            <input type="checkbox" id="chk-allow-repeat" />
+            <span data-i18n="allow_repeat">Allow repeat picks</span>
+          </label>
+          <span class="chip chip-blue" id="picker-pool-count">0 eligible</span>
+        </div>
+
+        <div class="flex gap-12" style="justify-content:center; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="btn-pick" style="min-width:130px; padding:12px 28px; font-size:1rem;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            <span data-i18n="btn_pick">Pick!</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-undo-pick">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+            </svg>
+            <span data-i18n="btn_undo_pick">Undo</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-clear-history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14H6L5 6"/>
+              <path d="M10 11v6M14 11v6"/>
+            </svg>
+            <span data-i18n="btn_clear_history">Clear History</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="picker-history-card">
+        <div class="picker-history-header">
+          <span class="picker-history-title" data-i18n="history_title">Pick History</span>
+          <span class="chip chip-orange" id="history-count-badge">0 picks</span>
+        </div>
+        <ul class="picker-history-list" id="picker-history-list">
+          <li class="history-empty" data-i18n="history_empty">No picks yet. Start picking!</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav id="bottom-nav" style="display:none;">
+    <div class="bottom-nav-inner">
+      <button class="bottom-nav-btn active" data-view="seating">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+        </svg>
+        <span data-i18n="tab_seating">Seating</span>
+      </button>
+      <button class="bottom-nav-btn" data-view="picker">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polygon points="10 8 16 12 10 16 10 8"/>
+        </svg>
+        <span data-i18n="tab_picker">Picker</span>
+      </button>
+      <button class="bottom-nav-btn" id="btn-shuffle-mobile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 3 21 3 21 8"/>
+          <line x1="4" y1="20" x2="21" y2="3"/>
+          <polyline points="21 16 21 21 16 21"/>
+          <line x1="15" y1="15" x2="21" y2="21"/>
+        </svg>
+        <span data-i18n="btn_shuffle">Acak</span>
+      </button>
+      <button class="bottom-nav-btn" id="btn-attendance-mobile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          <path d="M9 16l2 2 4-4"/>
+        </svg>
+        <span data-i18n="btn_attendance">Absensi</span>
+      </button>
+      <button class="bottom-nav-btn" id="btn-students-mobile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span data-i18n="btn_students">Students</span>
+      </button>
+      <button class="bottom-nav-btn" id="btn-settings-mobile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span data-i18n="btn_settings">Settings</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- =====================================================
+       MODAL: STUDENT MANAGER
+  ===================================================== -->
+  <div class="modal-overlay" id="modal-students">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" data-i18n="modal_students_title">Manage Students</span>
+        <button class="btn btn-ghost btn-icon modal-close" data-modal="modal-students">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="student-manager-tabs">
+          <button class="student-manager-tab active" data-student-tab="list" data-i18n="stab_list">Student List</button>
+          <button class="student-manager-tab" data-student-tab="add-single" data-i18n="stab_add">Add Student</button>
+          <button class="student-manager-tab" data-student-tab="bulk" data-i18n="stab_bulk">Bulk Add</button>
+        </div>
+
+        <!-- Tab: List -->
+        <div class="student-tab-content active" id="stab-list">
+          <div class="bulk-action-bar">
+            <button class="btn btn-secondary" id="btn-mark-all-present" data-i18n="btn_all_present">✓ All Present</button>
+            <button class="btn btn-secondary" id="btn-mark-all-absent" data-i18n="btn_all_absent">✗ All Absent</button>
+            <button class="btn btn-secondary" id="btn-fix-gender" style="background:var(--seat-locked-bg);border-color:var(--seat-locked-border);color:#92400e;">⚧ Fix Gender</button>
+            <button class="btn btn-secondary" id="btn-sort-alpha">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px;"><line x1="4" y1="6" x2="11" y2="6"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/><polyline points="15 9 18 6 21 9"/><line x1="18" y1="6" x2="18" y2="18"/></svg>
+              <span data-i18n="btn_sort_alpha">A-Z</span>
+            </button>
+            <button class="btn btn-secondary" id="btn-sort-status">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span data-i18n="btn_sort_status">Status</span>
+            </button>
+            <button class="btn btn-danger" id="btn-reset-defaults" data-i18n="btn_reset">Reset Defaults</button>
+          </div>
+          <ul class="student-list" id="student-list-ul"></ul>
+        </div>
+
+        <!-- Tab: Add Single -->
+        <div class="student-tab-content" id="stab-add-single">
+          <div class="form-group">
+            <label class="form-label" for="input-student-name" data-i18n="label_name">Full Name</label>
+            <input type="text" class="form-input" id="input-student-name" placeholder="e.g. Budi Santoso" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="select-student-gender" data-i18n="label_gender">Gender</label>
+            <select class="form-select" id="select-student-gender">
+              <option value="male" data-i18n="opt_male">Male</option>
+              <option value="female" data-i18n="opt_female">Female</option>
+            </select>
+          </div>
+          <button class="btn btn-primary w-full mt-8" id="btn-add-student">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span data-i18n="btn_add_student">Add Student</span>
+          </button>
+        </div>
+
+        <!-- Tab: Bulk Add -->
+        <div class="student-tab-content" id="stab-bulk">
+          <div class="form-group">
+            <label class="form-label" for="textarea-bulk" data-i18n="label_bulk">Student Names</label>
+            <textarea class="form-input form-textarea" id="textarea-bulk" placeholder="One name per line:&#10;Budi Santoso&#10;Siti Rahayu&#10;Ahmad Fauzi"></textarea>
+            <p class="form-hint" data-i18n="hint_bulk">Edit names freely. New names are added, removed names are deleted, existing names are kept.</p>
+          </div>
+          <button class="btn btn-primary w-full" id="btn-bulk-add">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span data-i18n="btn_bulk_add">Save List</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span id="student-total-badge" class="chip chip-orange">0 students</span>
+        <button class="btn btn-primary modal-close" data-modal="modal-students" data-i18n="btn_done">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       MODAL: EDIT STUDENT
+  ===================================================== -->
+  <div class="modal-overlay" id="modal-edit-student">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header">
+        <span class="modal-title" data-i18n="modal_edit_title">Edit Student</span>
+        <button class="btn btn-ghost btn-icon modal-close" data-modal="modal-edit-student">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-student-id" />
+        <div class="form-group">
+          <label class="form-label" data-i18n="label_name">Full Name</label>
+          <input type="text" class="form-input" id="edit-student-name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="label_gender">Gender</label>
+          <select class="form-select" id="edit-student-gender">
+            <option value="male" data-i18n="opt_male">Male</option>
+            <option value="female" data-i18n="opt_female">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="label_status">Attendance</label>
+          <select class="form-select" id="edit-student-status">
+            <option value="present" data-i18n="opt_present">Present</option>
+            <option value="absent" data-i18n="opt_absent">Absent</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary modal-close" data-modal="modal-edit-student" data-i18n="btn_cancel">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-edit" data-i18n="btn_save">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       MODAL: SETTINGS
+  ===================================================== -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" data-i18n="modal_settings_title">Settings</span>
+        <button class="btn btn-ghost btn-icon modal-close" data-modal="modal-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+
+        <div class="settings-section">
+          <p class="settings-section-title" data-i18n="settings_data">Data Management</p>
+
+
+          <div class="settings-row">
+            <div>
+              <p class="settings-label" data-i18n="settings_export">Export Data</p>
+              <p class="settings-description" data-i18n="settings_export_desc">Save all data as a .json backup file</p>
+            </div>
+            <button class="btn btn-secondary" id="btn-export">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span data-i18n="btn_export">Export</span>
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <p class="settings-label" data-i18n="settings_import">Import Data</p>
+              <p class="settings-description" data-i18n="settings_import_desc">Load a previously exported .json file</p>
+            </div>
+            <label class="file-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span data-i18n="btn_import">Import</span>
+              <input type="file" id="input-import" accept=".json" />
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-section-title" data-i18n="settings_appearance">Appearance</p>
+
+          <div class="settings-row">
+            <div>
+              <p class="settings-label" data-i18n="settings_bg">Custom Background</p>
+              <p class="settings-description" data-i18n="settings_bg_desc">Upload an image as page background (auto-compressed)</p>
+            </div>
+            <div class="flex gap-8">
+              <label class="file-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <span data-i18n="btn_upload_bg">Upload</span>
+                <input type="file" id="input-bg-image" accept="image/*,.heic,.heif" />
+              </label>
+              <button class="btn btn-secondary" id="btn-clear-bg" data-i18n="btn_clear_bg">Clear</button>
+            </div>
+          </div>
+
+          <div class="settings-row mobile-only">
+            <div>
+              <p class="settings-label" data-i18n="settings_pov">Point of View</p>
+              <p class="settings-description" data-i18n="settings_pov_desc">Flip seating grid orientation</p>
+            </div>
+            <div class="toggle-pill" id="pov-toggle-mobile">
+              <button data-pov="teacher" class="active" data-i18n="pov_teacher">Teacher</button>
+              <button data-pov="student" data-i18n="pov_student">Student</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-section-title" data-i18n="settings_danger">Danger Zone</p>
+          <div class="settings-row">
+            <div>
+              <p class="settings-label" data-i18n="settings_clear_all">Clear All Data</p>
+              <p class="settings-description" data-i18n="settings_clear_all_desc">Wipe all localStorage data and reset to defaults</p>
+            </div>
+            <button class="btn btn-danger" id="btn-clear-all-data" data-i18n="btn_clear_all">Clear All</button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary modal-close" data-modal="modal-settings" data-i18n="btn_close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <!-- ═══════════════════════════════════════
+       MODAL: INPUT ABSENSI
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-attendance">
+    <div class="modal" style="max-width:560px;">
+      <div class="modal-header">
+        <span class="modal-title" style="font-family:var(--font-display)" data-i18n="modal_attendance_title">Absensi Harian</span>
+        <button class="btn btn-ghost btn-icon modal-close" data-modal="modal-attendance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="attendance-date-header">
+          <div>
+            <label class="form-label" data-i18n="label_att_date">Tanggal</label>
+            <input type="date" class="form-input" id="input-att-date" style="width:auto;" />
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-secondary" id="btn-att-all-hadir">
+              ✓ <span data-i18n="btn_all_hadir">Semua Hadir</span>
+            </button>
+            <button class="btn btn-secondary" id="btn-att-all-alpa">
+              ✗ <span data-i18n="btn_all_alpa">Semua Alpa</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+          <span style="font-size:0.72rem;color:var(--text-muted);font-weight:600;align-self:center;">Status:</span>
+          <span class="rekap-badge rb-H" data-i18n="att_hadir">Hadir</span>
+          <span class="rekap-badge rb-S" data-i18n="att_sakit">Sakit</span>
+          <span class="rekap-badge rb-I" data-i18n="att_izin">Izin</span>
+          <span class="rekap-badge rb-A" data-i18n="att_alpa">Alpa</span>
+        </div>
+
+        <div class="attendance-student-list" id="att-student-list"></div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <button class="btn btn-secondary modal-close" data-modal="modal-attendance" data-i18n="btn_cancel">Cancel</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" id="btn-open-rekap-att">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              <path d="M9 16l2 2 4-4"/>
+            </svg>
+            <span data-i18n="btn_view_rekap">Rekap Absensi</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-open-rekap-nilai">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;">
+              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            <span data-i18n="btn_rekap_nilai">Rekap Nilai</span>
+          </button>
+          <button class="btn btn-primary" id="btn-save-attendance">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="width:15px;height:15px;">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span data-i18n="btn_save_att">Simpan</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MODAL: REKAP ABSENSI
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-rekap">
+    <div class="modal" style="max-width:680px;">
+      <div class="modal-header">
+        <span class="modal-title" style="font-family:var(--font-display)" data-i18n="modal_rekap_title">Rekap Absensi</span>
+        <button class="btn btn-ghost btn-icon modal-close" data-modal="modal-rekap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="rekap-toolbar">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="date" class="form-input" id="rekap-from" style="width:auto;" />
+            <span style="color:var(--text-muted);font-size:0.85rem;">–</span>
+            <input type="date" class="form-input" id="rekap-to" style="width:auto;" />
+            <button class="btn btn-secondary" id="btn-rekap-filter" data-i18n="btn_filter">Filter</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="btn-print-rekap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              <span data-i18n="btn_print">Cetak</span>
+            </button>
+            <button class="btn btn-danger" id="btn-delete-date" style="font-size:0.78rem;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+              </svg>
+              <span data-i18n="btn_del_date">Hapus Tanggal</span>
+            </button>
+          </div>
+        </div>
+        <!-- ── Baris aksi Import/Export Absensi ── -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-primary);">
+          <button class="btn btn-secondary" id="btn-rekap-export-json" style="font-size:0.78rem;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export JSON
+          </button>
+          <label class="btn btn-secondary" style="font-size:0.78rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Import JSON
+            <input type="file" id="input-rekap-import-json" accept=".json" style="display:none;" />
+          </label>
+          <button class="btn btn-secondary" id="btn-rekap-export-csv" style="font-size:0.78rem;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+            Export Tabel
+          </button>
+          <label class="btn btn-secondary" style="font-size:0.78rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+            Import Tabel
+            <input type="file" id="input-rekap-import-csv" accept=".csv,text/csv" style="display:none;" />
+          </label>
+        </div>
+        <div id="print-area">
+          <div id="rekap-class-info" style="margin-bottom:12px;display:none;">
+            <p style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--text-primary)" id="rekap-class-name"></p>
+            <p style="font-size:0.78rem;color:var(--text-muted)" id="rekap-date-range"></p>
+          </div>
+          <div class="rekap-table-wrap">
+            <table class="rekap-table" id="rekap-table">
+              <thead id="rekap-thead"></thead>
+              <tbody id="rekap-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary modal-close" data-modal="modal-rekap" data-i18n="btn_close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MODAL: REKAP NILAI
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-rekap-nilai">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-header">
+        <span class="modal-title" style="font-family:var(--font-display)" data-i18n="modal_rekap_nilai_title">Rekap Nilai</span>
+        <button class="btn btn-ghost btn-icon modal-close" data-modal="modal-rekap-nilai">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Toolbar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="date" class="form-input" id="nilai-from" style="width:auto;" />
+            <span style="color:var(--text-muted)">–</span>
+            <input type="date" class="form-input" id="nilai-to" style="width:auto;" />
+            <button class="btn btn-secondary" id="btn-nilai-filter" data-i18n="btn_filter">Filter</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <label class="include-zero-wrap">
+              <input type="checkbox" id="chk-include-zero" />
+              <span data-i18n="lbl_include_zero">Ikutkan nilai 0</span>
+            </label>
+            <button class="btn btn-secondary" id="btn-print-nilai">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              <span data-i18n="btn_print">Cetak</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sub tabs -->
+        <div class="rekap-tabs" id="nilai-rekap-tabs">
+          <button class="rekap-tab active" data-nilai-tab="per-siswa" data-i18n="tab_nilai_siswa">Per Siswa</button>
+          <button class="rekap-tab" data-nilai-tab="per-hari" data-i18n="tab_nilai_hari">Per Hari</button>
+          <button class="rekap-tab" data-nilai-tab="per-minggu" data-i18n="tab_nilai_minggu">Per Minggu</button>
+          <button class="rekap-tab" data-nilai-tab="ringkasan" data-i18n="tab_nilai_ringkasan">Ringkasan</button>
+        </div>
+
+        <div id="print-area-nilai">
+          <div class="rekap-table-wrap">
+            <table class="rekap-table" id="nilai-table">
+              <thead id="nilai-thead"></thead>
+              <tbody id="nilai-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary modal-close" data-modal="modal-rekap-nilai" data-i18n="btn_close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Focus Mode Overlay -->
+  <div id="focus-overlay">
+    <div class="focus-card">
+      <div class="focus-avatar" id="focus-avatar"></div>
+      <p class="focus-name" id="focus-name"></p>
+      <div class="focus-meta">
+        <span class="focus-badge" id="focus-seat-num"></span>
+        <span class="focus-badge" id="focus-row-num"></span>
+      </div>
+      <button class="focus-close" id="focus-close-btn">Tutup</button>
+    </div>
+  </div>
+
+  <div id="toast-container" aria-live="polite"></div>
+
+  <script>
+  /* ============================================================
+     FIREBASE INIT
+  ============================================================ */
+  const firebaseConfig = {
+    apiKey: "AIzaSyABiS1W-2DHdLTitY7LbQfRi0jGypQ14wo",
+    authDomain: "myclass-efbef.firebaseapp.com",
+    projectId: "myclass-efbef",
+    storageBucket: "myclass-efbef.firebasestorage.app",
+    messagingSenderId: "43174096997",
+    appId: "1:43174096997:web:2138085fc289a7366d168c"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const googleProvider = new firebase.auth.GoogleAuthProvider();
+  </script>
+
+  <script>
+  // Global functions called from HTML onclick attributes
+  function switchLoginTab(tab) {
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    document.getElementById('form-login').style.display = tab === 'login' ? '' : 'none';
+    document.getElementById('form-register').style.display = tab === 'register' ? '' : 'none';
+    document.getElementById('login-error').classList.remove('show');
+  }
+
+  function togglePass(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+  }
+  </script>
+
+  <!-- Application scripts — load order: data.js → app-core.js → app-sa.js -->
+  <script src="data.js"></script>
+  <script src="app-core.js"></script>
+  <script src="app-sa.js"></script>
+
+</body>
+</html>
