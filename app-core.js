@@ -171,7 +171,14 @@
       };
       const toast = document.createElement('div');
       toast.className = `toast toast-${type}`;
-      toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span>${message}</span>`;
+      // Build toast with safe SVG icon; set message via textContent to prevent XSS
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'toast-icon';
+      iconSpan.innerHTML = icons[type] || icons.info; // static SVG strings only, safe
+      const msgSpan = document.createElement('span');
+      msgSpan.textContent = message; // textContent prevents any HTML injection
+      toast.appendChild(iconSpan);
+      toast.appendChild(msgSpan);
       container.appendChild(toast);
       setTimeout(() => {
         toast.classList.add('toast-out');
